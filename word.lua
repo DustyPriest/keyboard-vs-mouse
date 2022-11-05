@@ -1,23 +1,23 @@
 Word = Object.extend(Object)
 
-TYPED = {r=240/255, g=45/255, b=255/255}
-UNTYPED = {r=1,g=1,b=1}
+TYPED = {240/255, 45/255, 255/255}
+UNTYPED = {1,1,1}
 
 local wordList = {}
 
-for line in love.filesystem.lines("word-list.txt") do
+for line in love.filesystem.lines("word-list-l5.txt") do
   table.insert(wordList, line)
 end
 
 function Word:new()
   self.letters = selectWord()
   
-  self.isActive = false
+  self.isDead = false
   
 end
 
 function selectWord()
-    testWord = wordList[math.random(1,#wordList)]
+    local testWord = wordList[love.math.random(1,#wordList)]
     
     local ltrs = {}
     
@@ -42,6 +42,7 @@ function Word:assessState()
   end
   
   if wordCompleted then
+    self.isDead = true
     return true
   end
   
