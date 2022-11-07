@@ -3,16 +3,18 @@ io.stdout:setvbuf("no")
 tick = require "tick"
 Object = require "classic"
 require "mouse"
+require "player"
 require "menu"
+require "arrow"
 
 ACTIVE_WORD = false
 
 -- TODO: 
 -- make font monospace DONE
 -- choose game window size DONE
--- create character in center
+-- create character in center DONE
 -- fill mouse sprite  & create random colour variation DONE
--- give background to typed letters?
+-- give background to words DONE
 -- create arrow animation png to go over target mouse
 -- make letters larger/more visible somehow DONE
 -- increase number of mice over time DONE
@@ -33,6 +35,8 @@ ACTIVE_WORD = false
 -- check how to best declare and initiate local variables
 -- create a life system! 3 lives, mice get bounced back when they hit you, a sound effect plays, either the screen shakes or the player does
 
+local background = nil
+
 local livingMice = {}
 local dyingMice = {}
 local menus = {} 
@@ -47,9 +51,13 @@ local gamePaused = false
 
 local difficulty = 1
 local level = 0
+
 local levelDuration = 0
+local spawnTimer = 0
+
 local spawning = false
 local spawner = nil
+
 local score = 0
 
 -- CALLBACKS
@@ -67,6 +75,9 @@ function love.load()
   wHeight = love.graphics.getHeight()
   
   loadMouseAnim()
+  loadPlayerAnim()
+  loadArrowAnim()
+  background = love.graphics.newImage("floorboards.png")
 
 
   -- TODO: APPLY DIFFICULTY SCALING
@@ -89,9 +100,9 @@ function love.load()
       {0.6, 0.3, 0.3, 1},
       {0.7, 0.4, 0.4, 1}))
 
-  setGameMessage("Killer mice are coming for your keyboard.\nFend them off!")
+  setGameMessage("Killer mice are attacking!\nArm yourself with a keyboard!")
 
-  spawnMice()
+--  spawnMice()
 
 end
 
@@ -99,7 +110,7 @@ function love.update(dt)
   tick.update(dt)
   
   -- tabbing out
-  if not love.window.hasFocus() then --
+  if not love.window.hasFocus() then 
     gamePaused = true
   end
   
@@ -107,11 +118,17 @@ function love.update(dt)
   if not gamePaused then
     
     --spawn mice
-    if #livingMice == 0 and not spawning then spawnMice() end
-    -- time down level
-    levelDuration = levelDuration - dt
-    if levelDuration <= 0 and spawning then stopSpawning() end
+--    if #livingMice == 0 and not spawning then spawnMice() end
+--    -- time down level
+--    levelDuration = levelDuration - dt
+--    if levelDuration <= 0 and spawning then stopSpawning() end
     
+    spawnMice(dt)
+    
+    -- level title every 5 levels
+    if level % 5 == 0 then
+      setGameMessage("Level: " .. level, {0.2, 0.6, 0.6})
+    end
     
     
     -- update mice
@@ -120,6 +137,10 @@ function love.update(dt)
     end
     for i,v in ipairs(dyingMice) do
       v:update(dt)
+    end
+    
+    if ACTIVE_WORD then
+      updateArrow(dt, livingMice[ACTIVE_WORD].x, livingMice[ACTIVE_WORD].y)
     end
   end
   
@@ -144,14 +165,20 @@ end
 
 function love.draw()
   -- light grey background for testing
-  love.graphics.setBackgroundColor(0.4, 0.4, 0.4)
+  -- love.graphics.setBackgroundColor(0.4, 0.4, 0.4)
+  
+  love.graphics.draw(background)
   
   -- TODO: ABSTRACT DRAWING, DRAW
 --    Draw game first, then menu
   
   -- draw player
   love.graphics.setColor(1,1,1,1)
-  love.graphics.rectangle("fill", 585, 385, 30, 30)
+  drawPlayer(3)
+  
+  -- FOR TESTING: RED CIRCLE IN CENTER
+--  love.graphics.setColor(1,0,0,1)
+--  love.graphics.circle("fill", wWidth / 2, wHeight / 2, 5)
   
   -- draw mice
   -- Change to for loop starting from end of table, so that the oldest mice render on top
@@ -164,10 +191,15 @@ function love.draw()
   
   -- draw target over active mouse
   if ACTIVE_WORD then
-    love.graphics.setColor(1,0,0)
-    love.graphics.rectangle("line", livingMice[ACTIVE_WORD].x - 32, livingMice[ACTIVE_WORD].y - 32, 64, 64) -- 32 and 64 bc mouse size is scaled up 2x
-    love.graphics.setColor(1,1,1)
+    -- red box for testing
+--    love.graphics.setColor(1,0,0)
+--    love.graphics.rectangle("line", livingMice[ACTIVE_WORD].x - 32, livingMice[ACTIVE_WORD].y - 32, 64, 64) 
+    
+    drawArrow(livingMice[ACTIVE_WORD].x, livingMice[ACTIVE_WORD].y)
+    
   end
+  
+  
   
   if gameMsgOpacity > 0 then drawGameMessage() end
   
@@ -213,7 +245,7 @@ function love.keypressed(key, scancode)
 end
 
 function love.mousepressed(mausx, mausy, button, istouch, presses)
-  if button == 1 then -- left click
+  if button == 1 and gamePaused then -- left click
     for i,menu in ipairs(menus) do -- look for hot menu
       if menu.hot then
         menu:fn() -- execute menu and return
@@ -292,7 +324,10 @@ function menuResume()
     if gamePaused then 
       gamePaused = false
       
-    else gamePaused = true end
+    else 
+      gamePaused = true 
+    
+    end
 end
 
 function menuExit(menu)
@@ -321,7 +356,7 @@ function menuRestart()
   stopSpawning()
 --  lives = 3
   
-  setGameMessage("Killer mice are coming for your keyboard.\nFend them off!")
+  setGameMessage("Killer mice are attacking!\nFend them off!")
   gamePaused = false
   
   
@@ -362,33 +397,60 @@ function commaValue(amount)
   return formatted
 end
 
-function spawnMice()
-  spawning = true
-  level = level + 1
-  levelDuration = 10 + level / 2
-  
-  if level % 10 == 0 then
-    setGameMessage("Level: " .. level, {0.2, 0.6, 0.6})
-  end
-  
-  local difficultyMod = nil
-  
-  if     difficulty == 1 then difficultyMod = 11 - (0.15 * difficulty)
-  elseif difficulty == 2 then difficultyMod = 7  - (0.15 * difficulty)
-  else                        difficultyMod = 4  - (0.15 * difficulty)
+function spawnMice(dt)
+  if #livingMice == 0 and levelDuration <= 0 then -- all mice defeated, start next level
+    level = level + 1
+    levelDuration = 10 + level / 2
+    spawning = true
   end
 
-  local spawnInterval = 1 --(1 / (level + 2)) * difficultyMod
+  if levelDuration > 0 and spawning then -- mid-level
+    if spawnTimer <= 0 then -- ready to spawn mouse
+      table.insert(livingMice, Mouse())
+      spawnTimer = difficultyMod(level)
+    else -- not ready to spawn mouse
+      spawnTimer = spawnTimer - dt
+    end
+  end
   
-  spawner = tick.recur(function() table.insert(livingMice, Mouse()) end, spawnInterval)
-
+  levelDuration = levelDuration - dt
+  
 end
 
-function stopSpawning()
-  spawning = false
-  if spawner then 
-    spawner:stop() 
+function difficultyMod(level)
+  if     difficulty == 1 then return 11 - (0.15 * level) -- normal
+  elseif difficulty == 2 then return 7  - (0.15 * level) -- hard
+  else                        return 4  - (0.15 * level) -- v hard
   end
+end
+
+--function spawnMice()
+--  spawning = true
+--  level = level + 1
+--  levelDuration = 10 + level / 2
+  
+--  if level % 10 == 0 then
+--    setGameMessage("Level: " .. level, {0.2, 0.6, 0.6})
+--  end
+  
+--  local difficultyMod = nil
+  
+--  if     difficulty == 1 then difficultyMod = 11 - (0.15 * level)
+--  elseif difficulty == 2 then difficultyMod = 7  - (0.15 * level)
+--  else                        difficultyMod = 4  - (0.15 * level)
+--  end
+
+--  local spawnInterval = 1 --(1 / (level + 2)) * difficultyMod
+  
+--  spawner = tick.recur(function() table.insert(livingMice, Mouse()) end, spawnInterval)
+
+--end
+
+--function stopSpawning()
+--  spawning = false
+--  if spawner then 
+--    spawner:stop() 
+--  end
     
   
-end
+--end

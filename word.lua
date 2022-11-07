@@ -1,7 +1,7 @@
 Word = Object.extend(Object)
 
-TYPED = {240/255, 45/255, 255/255}
-UNTYPED = {1,1,1}
+TYPED = {75/255, 255/255, 6/255, 1}
+UNTYPED = {1,1,1,1}
 
 local wordList = {}
 
