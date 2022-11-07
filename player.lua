@@ -29,6 +29,9 @@ end
 
 function drawPlayer(lives)
   -- draw player based on  lives left
-  love.graphics.draw(playerAnim, playerAnimFrames[4 - lives], wWidth / 2, wHeight / 2,0,1,1,(frameWidth + 2) / 2, (frameHeight + 2) / 2)
-  
+  if lives > 1 then
+    love.graphics.draw(playerAnim, playerAnimFrames[4 - lives], wWidth / 2, wHeight / 2,0,1,1,(frameWidth + 2) / 2, (frameHeight + 2) / 2)
+  else
+    love.graphics.draw(playerAnim, playerAnimFrames[3], wWidth / 2, wHeight / 2,0,1,1,(frameWidth + 2) / 2, (frameHeight + 2) / 2)
+  end
 end

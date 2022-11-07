@@ -38,12 +38,12 @@ function Mouse:new()
     -- random of three colours
     self.colour = mouseColours[love.math.random(1, #mouseColours)]
     
-    self.speed = 50
-    self.radius = 20
-    self.angle = math.atan2(400 - self.y, 600 - self.x)   -- angle to face center
+    self.speed = 35
+    self.cd = 0
     
     self.word = Word()
     
+    self.angle = math.atan2(400 - self.y, 600 - self.x)   -- angle to face center
     self.currentFrame = 1
     
 end
@@ -61,10 +61,13 @@ function Mouse:update(dt)
     self.currentFrame = 1
   end
   
-  if not self.word.isDead then
+  if not self.word.isDead and self.cd <= 0 then
   -- move towards center of the screen
     self.x = self.x + self.speed * vec.x / vec.dist * dt
     self.y = self.y + self.speed * vec.y / vec.dist * dt
+  elseif not self.word.isDead and self.cd > 0 then
+    self.x = self.x - self.speed * 10 * vec.x / vec.dist * dt
+    self.y = self.y - self.speed * 10 * vec.y / vec.dist * dt
   else
     -- dead: run away quickly
     self.x = self.x + self.speed * 20 * -vec.x / vec.dist * dt
@@ -90,8 +93,13 @@ function Mouse:draw()
     local letterWidth = 11
     for i,v in ipairs(self.word.letters) do
       local letterx = self.x + (10 * (i - 1)) - (#self.word.letters * letterWidth / 2) --- mouse pos + letter spacing - centering
+      local bgStartMod = 0
+      local bgEndMod = 0
+      if i == 1 then bgStartMod = 3 
+      elseif i == #self.word.letters then bgEndMod = 4
+      end
       love.graphics.setColor(0,0,0,0.5) -- transparent background
-      love.graphics.rectangle("fill", letterx, self.y + 30, 10, 30)
+      love.graphics.rectangle("fill", letterx - bgStartMod, self.y + 30, 10 + bgStartMod + bgEndMod, 32)
       love.graphics.setColor(unpack(v.typed))
       love.graphics.print(v.ch, mouseFont, letterx, self.y + 30) -- draw letter
       love.graphics.line(letterx + 2, self.y + 55, letterx + 9, self.y + 55) -- draw underline
@@ -115,5 +123,34 @@ function loadMouseAnim()
     table.insert(mouseFrames, love.graphics.newQuad(1 + i * (mouseFrameSide + 2), 1, mouseFrameSide, mouseFrameSide, width, height)) -- 1px & 2px adjustments to avoid borders
   end
   
+end
+
+function Mouse:checkCollision(dt)
+  -- check if mouse is touching player
+  -- depends on final decision for sizes of mice and player
+  local pLeft = 1200 / 2 - 72 / 2
+  local pRight = 1200 / 2 + 72 / 2
+  local pTop = 800 / 2 - 64 / 2
+  local pBottom = 800 / 2 + 64 / 2
+  
+  -- TODO: move to mouse object? to sort out sizing
+  
+  local mLeft = self.x
+  local mRight = self.x + 32 -- double radius to equal right side, doesn't work properly with circle
+  local mTop = self.y
+  local mBottom = self.y + 32
+  
+  -- store boolean of if overlapping or not and not already on cooldown, return later after updating mouse
+  local result = mRight > pLeft 
+      and mLeft < pRight
+      and mBottom > pTop
+      and mTop < pBottom
+      and self.cd <= 0
+      
+  if result then
+    self.cd = 0.5
+  else self.cd = self.cd - dt end
+
+  return result
 end
 

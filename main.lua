@@ -15,7 +15,7 @@ ACTIVE_WORD = false
 -- create character in center DONE
 -- fill mouse sprite  & create random colour variation DONE
 -- give background to words DONE
--- create arrow animation png to go over target mouse
+-- create arrow animation png to go over target mouse DONE
 -- make letters larger/more visible somehow DONE
 -- increase number of mice over time DONE
 -- put in real wordlist
@@ -33,9 +33,11 @@ ACTIVE_WORD = false
 -- record high scores
 -- check where "requires" should be put
 -- check how to best declare and initiate local variables
--- create a life system! 3 lives, mice get bounced back when they hit you, a sound effect plays, either the screen shakes or the player does
+-- create a life system! 3 lives, mice get bounced back when they hit you, a sound effect plays
+-- create screenshake on hit taken
 
 local background = nil
+local heart = nil
 
 local livingMice = {}
 local dyingMice = {}
@@ -45,7 +47,7 @@ local wHeight = nil -- int
 
 local gameMsg = nil
 local gameMsgOpacity = 0
-local gameMsgClr = {1,1,1}
+local gameMsgClr = {1,1,1,1}
 
 local gamePaused = false
 
@@ -58,6 +60,8 @@ local spawnTimer = 0
 local spawning = false
 local spawner = nil
 
+local lives = 3
+local invuln = 0
 local score = 0
 
 -- CALLBACKS
@@ -78,6 +82,7 @@ function love.load()
   loadPlayerAnim()
   loadArrowAnim()
   background = love.graphics.newImage("floorboards.png")
+  heart = love.graphics.newImage("heart.png")
 
 
   -- TODO: APPLY DIFFICULTY SCALING
@@ -123,16 +128,24 @@ function love.update(dt)
 --    levelDuration = levelDuration - dt
 --    if levelDuration <= 0 and spawning then stopSpawning() end
     
+    
     spawnMice(dt)
     
-    -- level title every 5 levels
-    if level % 5 == 0 then
-      setGameMessage("Level: " .. level, {0.2, 0.6, 0.6})
+    if invuln > 0 then 
+      invuln = invuln - dt
     end
     
-    
+    -- level title every 5 levels
+    if level % 5 == 0 and gameMsgOpacity <= 0 then
+      setGameMessage("Level: " .. level, {0.2, 0.6, 0.6})
+    end
+
     -- update mice
     for i,v in ipairs(livingMice) do
+      if v:checkCollision(dt) and invuln <= 0 then -- not invulnerable and getting hit
+        lives = lives - 1
+        invuln = 3
+      end
       v:update(dt)
     end
     for i,v in ipairs(dyingMice) do
@@ -142,6 +155,9 @@ function love.update(dt)
     if ACTIVE_WORD then
       updateArrow(dt, livingMice[ACTIVE_WORD].x, livingMice[ACTIVE_WORD].y)
     end
+    
+    
+    
   end
   
   -- update menus
@@ -166,7 +182,7 @@ end
 function love.draw()
   -- light grey background for testing
   -- love.graphics.setBackgroundColor(0.4, 0.4, 0.4)
-  
+  love.graphics.setColor(1,1,1,1)
   love.graphics.draw(background)
   
   -- TODO: ABSTRACT DRAWING, DRAW
@@ -174,7 +190,7 @@ function love.draw()
   
   -- draw player
   love.graphics.setColor(1,1,1,1)
-  drawPlayer(3)
+  drawPlayer(lives)
   
   -- FOR TESTING: RED CIRCLE IN CENTER
 --  love.graphics.setColor(1,0,0,1)
@@ -215,12 +231,28 @@ function love.draw()
   end
   
   -- score
+  love.graphics.setColor(0,0,0,0.5)
+  love.graphics.rectangle("fill", wWidth - mouseFont:getWidth("Score") - 15, 5, mouseFont:getWidth("Score") + 10, mouseFont:getHeight("A") + 1) 
+  love.graphics.rectangle("fill", wWidth - mouseFont:getWidth(commaValue(score)) - 15, 10 + mouseFont:getHeight("A"), mouseFont:getWidth(commaValue(score)) + 10, mouseFont:getHeight("A") + 1) 
+  
   love.graphics.setColor(1,1,1,1)
   love.graphics.printf("Score", mouseFont, 0, 5, wWidth - 10, "right")
   love.graphics.printf(commaValue(score), mouseFont, 0, 10 + mouseFont:getHeight("A"), wWidth - 10, "right")
+  
   -- level
+  love.graphics.setColor(0,0,0,0.5)
+  love.graphics.rectangle("fill", wWidth - mouseFont:getWidth("Level") - 15, wHeight - mouseFont:getHeight("A") * 2 - 10, mouseFont:getWidth("Level") + 10, mouseFont:getHeight("A") + 1) 
+  love.graphics.rectangle("fill", wWidth - mouseFont:getWidth(level) - 15, wHeight - mouseFont:getHeight("A") - 5, mouseFont:getWidth(level) + 10, mouseFont:getHeight("A") + 1) 
+  
+  love.graphics.setColor(1,1,1,1)
   love.graphics.printf("Level", mouseFont, 0, wHeight - mouseFont:getHeight("A") * 2 - 10, wWidth - 10, "right")
-  love.graphics.printf(level, mouseFont, 0, wHeight - mouseFont:getHeight("A") - 10, wWidth - 10, "right")
+  love.graphics.printf(level, mouseFont, 0, wHeight - mouseFont:getHeight("A") - 5, wWidth - 10, "right")
+  
+  -- lives
+  for i=1,3 do
+    if i > lives then love.graphics.setColor(0.5,0.5,0.5,0.3) end -- lost lives
+    love.graphics.draw(heart, wWidth / 2 + 36 * (i - 2), 5, 0, 1, 1, 17, 0)
+  end
   
 end
 
@@ -298,27 +330,7 @@ function deleteActiveWord()
   tick.delay(function() table.remove(dyingMice, dyingMouseIdx) end, 2) -- IS 2 SECONDS ENOUGH / TOO MUCH BEFORE DELETING
 end
 
-local function checkCollision(mouse)
-  -- check if mouse is touching player
-  -- depends on final decision for sizes of mice and player
-  local pLeft = wWidth / 2 - 15
-  local pRight = wWidth / 2 + 15
-  local pTop = wHeight / 2 - 15
-  local pBottom = wHeight / 2 + 15
-  
-  -- TODO: move to mouse object? to sort out sizing
-  
-  local mLeft = mouse.x
-  local mRight = mouse.x + 40 -- double radius to equal right side, doesn't work properly with circle
-  local mTop = mouse.y
-  local mBottom = mouse.y + 40
-  
-  -- return boolean of if overlapping or not
-  return  mRight > pLeft 
-      and mLeft < pRight
-      and mBottom > pTop
-      and mTop < pBottom
-end
+
 
 function menuResume()
     if gamePaused then 
@@ -418,10 +430,12 @@ function spawnMice(dt)
 end
 
 function difficultyMod(level)
-  if     difficulty == 1 then return 11 - (0.15 * level) -- normal
-  elseif difficulty == 2 then return 7  - (0.15 * level) -- hard
-  else                        return 4  - (0.15 * level) -- v hard
+  local mod = nil
+  if     difficulty == 1 then mod =  11 - (0.15 * level) -- normal
+  elseif difficulty == 2 then mod =  7  - (0.15 * level) -- hard
+  else                        mod = 4  - (0.15 * level) -- v hard
   end
+  return (1 / (level + 2)) * mod
 end
 
 --function spawnMice()
