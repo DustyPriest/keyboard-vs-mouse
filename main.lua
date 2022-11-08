@@ -24,10 +24,10 @@ ACTIVE_WORD = false
 -- change background colour and general colour, background texture?
 -- create death animation for mice (run back out of screen quickly, without letters beneath, or circle around) DONE
 -- create sound effect for hitting, missing, destroying, dying
--- create menu class (properties: hovered (bool), function, colour, text, fontsize, )
-    -- hovered property is a second check behind a gamePaused bool for whether clicking on menu should do anything
+-- create menu class (properties: hovered (bool), function, colour, text, fontsize, ) DONE
+    -- hovered property is a second check behind a gamePaused bool for whether clicking on menu should do anything DONE
 -- create pause on esc. and minimize/unfocus DONE
--- keyboard support for menu
+-- keyboard support for menu, eh
 -- make lose state with restart option
 -- create scoring system and display
 -- record high scores
@@ -35,6 +35,8 @@ ACTIVE_WORD = false
 -- check how to best declare and initiate local variables
 -- create a life system! 3 lives, mice get bounced back when they hit you, a sound effect plays
 -- create screenshake on hit taken
+-- create main menu, move difficulty option there
+-- separate into 3 word lists. normal: 2 - 6, large: 7 - 15, boss: 15+. Spawn normal always, large if on hard or on level 5+, boss 1 per level/5 on each 5th level, or every level from 10 if on hard.
 
 local background = nil
 local heart = nil
@@ -51,7 +53,7 @@ local gameMsgClr = {1,1,1,1}
 
 local gamePaused = false
 
-local difficulty = 1
+local difficulty = 2
 local level = 0
 
 local levelDuration = 0
@@ -97,7 +99,7 @@ function love.load()
       "Restart",
       menuRestart))
   table.insert(menus, Menu(
-      "Difficulty: Normal",
+      "Difficulty: Easy",
       menuDifficulty))
   table.insert(menus, Menu(
       "Exit",
@@ -135,10 +137,7 @@ function love.update(dt)
       invuln = invuln - dt
     end
     
-    -- level title every 5 levels
-    if level % 5 == 0 and gameMsgOpacity <= 0 then
-      setGameMessage("Level: " .. level, {0.2, 0.6, 0.6})
-    end
+    
 
     -- update mice
     for i,v in ipairs(livingMice) do
@@ -377,13 +376,13 @@ end
 function menuDifficulty(menu)
   if difficulty == 1 then
     difficulty = 2
-    menu.text = "Difficulty: Hard"
+    menu.text = "Difficulty: Easy"
   elseif difficulty == 2 then
     difficulty = 3
-    menu.text = "Difficulty: Very Hard"
+    menu.text = "Difficulty: Normal"
   else 
     difficulty = 1
-    menu.text = "Difficulty: Normal"
+    menu.text = "Difficulty: Hard"
   end
 end
 
@@ -412,13 +411,24 @@ end
 function spawnMice(dt)
   if #livingMice == 0 and levelDuration <= 0 then -- all mice defeated, start next level
     level = level + 1
+    
+    -- level title every 5 levels
+    if level % 5 == 0 and gameMsgOpacity <= 0 then
+      setGameMessage("Level: " .. level, {0.2, 0.6, 0.6})
+    end
+    
     levelDuration = 10 + level / 2
     spawning = true
+    if level % 5 == 0 then -- spawn 1 boss mouse per 5 levels every 5 levels
+      for i=1, level / 5 do
+        table.insert(livingMice, Mouse(true))
+      end
+    end
   end
 
   if levelDuration > 0 and spawning then -- mid-level
     if spawnTimer <= 0 then -- ready to spawn mouse
-      table.insert(livingMice, Mouse())
+      table.insert(livingMice, Mouse(false))
       spawnTimer = difficultyMod(level)
     else -- not ready to spawn mouse
       spawnTimer = spawnTimer - dt
@@ -430,12 +440,12 @@ function spawnMice(dt)
 end
 
 function difficultyMod(level)
-  local mod = nil
-  if     difficulty == 1 then mod =  11 - (0.15 * level) -- normal
-  elseif difficulty == 2 then mod =  7  - (0.15 * level) -- hard
-  else                        mod = 4  - (0.15 * level) -- v hard
+--  local mod = nil
+  if     difficulty == 1 then return (50 / (level + 10)) + 2 -- mod =  11 - (0.15 * level) -- easy
+  elseif difficulty == 2 then return (50 / (level + 10)) + 1 -- mod =  7  - (0.15 * level) -- normal
+  else                        return (50 / (level + 15)) + 0.5  --mod = 4  - (0.15 * level) -- hard
   end
-  return (1 / (level + 2)) * mod
+--  return (1 / (level + 2)) * mod
 end
 
 --function spawnMice()

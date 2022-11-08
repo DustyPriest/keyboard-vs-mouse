@@ -13,7 +13,7 @@ local mouseColours = {
   }
 
 
-function Mouse:new()
+function Mouse:new(boss)
     -- random position on edge of screen
     if love.math.random() > 0.5 then
       -- xpos first, so ypos will be off screen
@@ -35,13 +35,17 @@ function Mouse:new()
       end
     end
     
+    self.word = Word(boss)
+    
+    self.speed = 75 - #self.word.letters * 4
+
     -- random of three colours
     self.colour = mouseColours[love.math.random(1, #mouseColours)]
-    
-    self.speed = 35
+      
+      
     self.cd = 0
     
-    self.word = Word()
+
     
     self.angle = math.atan2(400 - self.y, 600 - self.x)   -- angle to face center
     self.currentFrame = 1
@@ -66,8 +70,9 @@ function Mouse:update(dt)
     self.x = self.x + self.speed * vec.x / vec.dist * dt
     self.y = self.y + self.speed * vec.y / vec.dist * dt
   elseif not self.word.isDead and self.cd > 0 then
-    self.x = self.x - self.speed * 10 * vec.x / vec.dist * dt
-    self.y = self.y - self.speed * 10 * vec.y / vec.dist * dt
+    -- recoil after hitting player
+    self.x = self.x - 600 * vec.x / vec.dist * dt
+    self.y = self.y - 600 * vec.y / vec.dist * dt
   else
     -- dead: run away quickly
     self.x = self.x + self.speed * 20 * -vec.x / vec.dist * dt
