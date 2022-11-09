@@ -38,6 +38,7 @@ function Mouse:new(difficulty, level, boss)
     self.word = Word(difficulty, level, boss)
     
     self.speed = 75 - #self.word.letters * 4
+    self.scale = 1 + #self.word.letters / 10
 
     -- random of three colours
     self.colour = mouseColours[love.math.random(1, #mouseColours)]
@@ -84,9 +85,9 @@ function Mouse:draw()
   -- draw current frame of animation (frames are 32/32, scaled 1.2x)
   love.graphics.setColor(unpack(self.colour))
   if not self.word.isDead then
-    love.graphics.draw(mouseAnim, mouseFrames[math.floor(self.currentFrame)],self.x, self.y, self.angle, 1.2, 1.2, 16, 16)
+    love.graphics.draw(mouseAnim, mouseFrames[math.floor(self.currentFrame)],self.x, self.y, self.angle, self.scale, self.scale, 16, 16)
   else
-    love.graphics.draw(mouseAnim, mouseFrames[math.floor(self.currentFrame)],self.x, self.y, self.angle - math.pi, 1, 1, 16, 16)
+    love.graphics.draw(mouseAnim, mouseFrames[math.floor(self.currentFrame)],self.x, self.y, self.angle - math.pi, self.scale * 0.8, self.scale * 0.8, 16, 16)
   end
   love.graphics.setColor(1,1,1)
 --  FOR TESTING: draw red circle in center of image
