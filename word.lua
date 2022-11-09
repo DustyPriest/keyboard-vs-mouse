@@ -7,15 +7,15 @@ local shortWordList = {}
 local longWordList = {}
 local bossWordList = {}
 
-for line in love.filesystem.lines("short-word-list.txt") do
+for line in love.filesystem.lines("short-word-list.txt") do -- short words: 2-6
   table.insert(shortWordList, line)
 end
 
-for line in love.filesystem.lines("long-word-list.txt") do
+for line in love.filesystem.lines("long-word-list.txt") do -- long words: 7-12
   table.insert(longWordList, line)
 end
 
-for line in love.filesystem.lines("boss-word-list.txt") do
+for line in love.filesystem.lines("boss-word-list.txt") do -- boss words: 15+
   table.insert(bossWordList, line)
 end
 
@@ -26,7 +26,6 @@ function Word:new(difficulty, level, boss)
   
 end
 
--- Spawn normal always, large if on hard or on level 5+, boss 1 per level/5 on each 5th level, or every level from 10 if on hard.
 function selectWord(difficulty, level, boss)
   local newWord = nil
   if boss then -- call to spawn boss mouse

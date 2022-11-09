@@ -18,17 +18,17 @@ ACTIVE_WORD = false
 -- create arrow animation png to go over target mouse DONE
 -- make letters larger/more visible somehow DONE
 -- increase number of mice over time DONE
--- put in real wordlist
--- create miniboss word list
+-- put in real wordlist DONE
+-- create miniboss word list DONE
 -- create a few gamemessages at key points
--- change background colour and general colour, background texture?
+-- change background colour and general colour, background texture? DONE
 -- create death animation for mice (run back out of screen quickly, without letters beneath, or circle around) DONE
 -- create sound effect for hitting, missing, destroying, dying
 -- create menu class (properties: hovered (bool), function, colour, text, fontsize, ) DONE
     -- hovered property is a second check behind a gamePaused bool for whether clicking on menu should do anything DONE
 -- create pause on esc. and minimize/unfocus DONE
 -- keyboard support for menu, eh
--- make lose state with restart option
+-- make lose state with restart option DONE
 -- create scoring system and display
 -- record high scores
 -- check where "requires" should be put
@@ -36,22 +36,20 @@ ACTIVE_WORD = false
 -- create a life system! 3 lives, mice get bounced back when they hit you, a sound effect plays
 -- create screenshake on hit taken
 -- create main menu, move difficulty option there
--- separate into 3 word lists. normal: 2 - 6, large: 7 - 15, boss: 15+. Spawn normal always, large if on hard or on level 5+, boss 1 per level/5 on each 5th level, or every level from 10 if on hard.
+-- separate into 3 word lists. normal: 2 - 6, large: 7 - 15, boss: 15+. Spawn normal always, large if on hard or on level 5+, boss 1 per level/5 on each 5th level, or every level from 10 if on hard. DONE
 
 local background = nil
 local heart = nil
 
 local livingMice = {}
 local dyingMice = {}
-local menus = {} 
-local wWidth = nil -- int
-local wHeight = nil -- int
+
+local wWidth = nil
+local wHeight = nil 
 
 local gameMsg = nil
 local gameMsgOpacity = 0
 local gameMsgClr = {1,1,1,1}
-
-local gamePaused = false
 
 local difficulty = 2
 local level = 0
@@ -66,11 +64,20 @@ local lives = 3
 local invuln = 0
 local score = 0
 
+local pauseMenus = {} 
+local gameOverMenus = {}
+
+local gamePaused = false
+local gameOver = false
+local stencilRadius = nil
+local looneyPause = 1
+
 -- CALLBACKS
 
 function love.load()
   mouseFont = love.graphics.setNewFont("RobotoMono-Medium.ttf", 18)
   menuFont = love.graphics.setNewFont("RobotoMono-Medium.ttf", 24)
+  titleFont = love.graphics.setNewFont("RobotoMono-Medium.ttf", 64)
   messageFont = love.graphics.setNewFont("RobotoMono-Medium.ttf", 32)
   -- TODO: Implement mini bosses
   bossFont = love.graphics.setNewFont("RobotoMono-Medium.ttf", 22)
@@ -80,6 +87,8 @@ function love.load()
   wWidth = love.graphics.getWidth()
   wHeight = love.graphics.getHeight()
   
+  stencilRadius = wWidth / 1.5
+  
   loadMouseAnim()
   loadPlayerAnim()
   loadArrowAnim()
@@ -87,25 +96,33 @@ function love.load()
   heart = love.graphics.newImage("heart.png")
 
 
-  -- TODO: APPLY DIFFICULTY SCALING
-  -- set mice to spawn starting every 1 second
-  --tick.recur(function() table.insert(livingMice, Mouse()) end, 1)
   
   -- Load menus
-  table.insert(menus, Menu(
+  table.insert(pauseMenus, Menu(
       "Resume",
       menuResume))
-  table.insert(menus, Menu(
+  table.insert(pauseMenus, Menu(
       "Restart",
       menuRestart))
-  table.insert(menus, Menu(
+  table.insert(pauseMenus, Menu(
       "Difficulty: Normal",
       menuDifficulty))
-  table.insert(menus, Menu(
+  table.insert(pauseMenus, Menu(
       "Exit",
       menuExit,
       {0.6, 0.3, 0.3, 1},
       {0.7, 0.4, 0.4, 1}))
+
+  table.insert(gameOverMenus, Menu(
+      "Try Again", 
+      menuRestart))
+  table.insert(gameOverMenus, Menu(
+      "Main Menu",
+      menuMainMenu))
+  table.insert(gameOverMenus, Menu(
+      "Exit", 
+      menuExit))
+  
 
   setGameMessage("Killer mice are attacking!\nArm yourself with a keyboard!")
 
@@ -116,13 +133,27 @@ end
 function love.update(dt)
   tick.update(dt)
   
+  -- lose state check before updating mouse position etc.
+  if lives == 0 and not gameOver then
+    gameOver = true
+    showGameOverMenus()
+  end
+  
+  if gameOver and stencilRadius > 0 then -- looney tunes effect
+    if stencilRadius > 60 or looneyPause <= 0 then
+      stencilRadius = stencilRadius - dt * 200
+    elseif looneyPause > 0 then
+      looneyPause = looneyPause - dt / 2.5
+    end
+  end
+  
   -- tabbing out
-  if not love.window.hasFocus() then 
+  if not love.window.hasFocus() and not gameOver then 
     gamePaused = true
   end
   
   -- update mice
-  if not gamePaused then
+  if not gamePaused and not gameOver then
     
     --spawn mice
 --    if #livingMice == 0 and not spawning then spawnMice() end
@@ -161,26 +192,34 @@ function love.update(dt)
   
   -- update menus
   -- if game paused then render menu
-  if gamePaused then
+  if gamePaused and not gameOver then
     local mausx, mausy = love.mouse.getPosition()
     
-    for i,v in ipairs(menus) do
-      v.hot = v:isHot(mausx, mausy, v:getPos(i, #menus))
+    for i,v in ipairs(pauseMenus) do
+      v.hot = v:isHot(mausx, mausy, v:getPos(i, #pauseMenus))
+    end
+  end
+  
+  if gameOver then
+    local mausx, mausy = love.mouse.getPosition()
+    
+    for i,menu in ipairs(gameOverMenus) do
+      if menu.show then
+        menu.hot = menu:isHot(mausx, mausy, menu:getPos(i, #gameOverMenus))
+      end
     end
   end
   
   -- update game message
-  if gameMsgOpacity > 0 and not gamePaused then
+  if gameMsgOpacity > 0 and not gamePaused and not gameOver then
     gameMsgOpacity = gameMsgOpacity -  dt / ((gameMsgOpacity * 10) + 1)
   end
     
-  -- check for lose condition
   
 end
 
 function love.draw()
-  -- light grey background for testing
-  -- love.graphics.setBackgroundColor(0.4, 0.4, 0.4)
+  -- background tile
   love.graphics.setColor(1,1,1,1)
   love.graphics.draw(background)
   
@@ -191,12 +230,9 @@ function love.draw()
   love.graphics.setColor(1,1,1,1)
   drawPlayer(lives)
   
-  -- FOR TESTING: RED CIRCLE IN CENTER
---  love.graphics.setColor(1,0,0,1)
---  love.graphics.circle("fill", wWidth / 2, wHeight / 2, 5)
   
   -- draw mice
-  -- Change to for loop starting from end of table, so that the oldest mice render on top
+  -- Change to for loop starting from end of table, so that the oldest mice render on top?
   for i,v in ipairs(livingMice) do
     v:draw()
   end
@@ -214,58 +250,85 @@ function love.draw()
     
   end
   
-  
-  
+  -- game announcement
   if gameMsgOpacity > 0 then drawGameMessage() end
   
-  
-  -- gane menus
-  if gamePaused then
-    love.graphics.setColor(0,0,0,0.3) -- transparent backdrop
+  -- pause menus
+  if gamePaused and not gameOver then
+    love.graphics.setColor(0,0,0,0.5) -- transparent backdrop
     love.graphics.rectangle("fill", 0, 0, wWidth, wHeight)
     
-    for i,v in ipairs(menus) do
-      v:draw(v:getPos(i, #menus))
+    for i,v in ipairs(pauseMenus) do
+      v:draw(v:getPos(i, #pauseMenus))
     end
   end
   
-  -- score
-  love.graphics.setColor(0,0,0,0.5)
-  love.graphics.rectangle("fill", wWidth - mouseFont:getWidth("Score") - 15, 5, mouseFont:getWidth("Score") + 10, mouseFont:getHeight("A") + 1) 
-  love.graphics.rectangle("fill", wWidth - mouseFont:getWidth(commaValue(score)) - 15, 10 + mouseFont:getHeight("A"), mouseFont:getWidth(commaValue(score)) + 10, mouseFont:getHeight("A") + 1) 
+  -- score in corner
+  if not gameOver then
+    love.graphics.setColor(0,0,0,0.5)
+    love.graphics.rectangle("fill", wWidth - mouseFont:getWidth("Score") - 15, 5, mouseFont:getWidth("Score") + 10, mouseFont:getHeight("A") + 1) 
+    love.graphics.rectangle("fill", wWidth - mouseFont:getWidth(commaValue(score)) - 15, 10 + mouseFont:getHeight("A"), mouseFont:getWidth(commaValue(score)) + 10, mouseFont:getHeight("A") + 1) 
+    
+    love.graphics.setColor(1,1,1,1)
+    love.graphics.printf("Score", mouseFont, 0, 5, wWidth - 10, "right")
+    love.graphics.printf(commaValue(score), mouseFont, 0, 10 + mouseFont:getHeight("A"), wWidth - 10, "right")
+    
+    -- level in corner
+    love.graphics.setColor(0,0,0,0.5)
+    love.graphics.rectangle("fill", wWidth - mouseFont:getWidth("Level") - 15, wHeight - mouseFont:getHeight("A") * 2 - 10, mouseFont:getWidth("Level") + 10, mouseFont:getHeight("A") + 1) 
+    love.graphics.rectangle("fill", wWidth - mouseFont:getWidth(level) - 15, wHeight - mouseFont:getHeight("A") - 5, mouseFont:getWidth(level) + 10, mouseFont:getHeight("A") + 1) 
+    
+    love.graphics.setColor(1,1,1,1)
+    love.graphics.printf("Level", mouseFont, 0, wHeight - mouseFont:getHeight("A") * 2 - 10, wWidth - 10, "right")
+    love.graphics.printf(level, mouseFont, 0, wHeight - mouseFont:getHeight("A") - 5, wWidth - 10, "right")
   
-  love.graphics.setColor(1,1,1,1)
-  love.graphics.printf("Score", mouseFont, 0, 5, wWidth - 10, "right")
-  love.graphics.printf(commaValue(score), mouseFont, 0, 10 + mouseFont:getHeight("A"), wWidth - 10, "right")
+    -- lives in top middle
+    for i=1,3 do
+      if i > lives then love.graphics.setColor(0.5,0.5,0.5,0.3) end -- lost lives
+      love.graphics.draw(heart, wWidth / 2 + 36 * (i - 2), 5, 0, 1, 1, 17, 0)
+    end
+  end
   
-  -- level
-  love.graphics.setColor(0,0,0,0.5)
-  love.graphics.rectangle("fill", wWidth - mouseFont:getWidth("Level") - 15, wHeight - mouseFont:getHeight("A") * 2 - 10, mouseFont:getWidth("Level") + 10, mouseFont:getHeight("A") + 1) 
-  love.graphics.rectangle("fill", wWidth - mouseFont:getWidth(level) - 15, wHeight - mouseFont:getHeight("A") - 5, mouseFont:getWidth(level) + 10, mouseFont:getHeight("A") + 1) 
-  
-  love.graphics.setColor(1,1,1,1)
-  love.graphics.printf("Level", mouseFont, 0, wHeight - mouseFont:getHeight("A") * 2 - 10, wWidth - 10, "right")
-  love.graphics.printf(level, mouseFont, 0, wHeight - mouseFont:getHeight("A") - 5, wWidth - 10, "right")
-  
-  -- lives
-  for i=1,3 do
-    if i > lives then love.graphics.setColor(0.5,0.5,0.5,0.3) end -- lost lives
-    love.graphics.draw(heart, wWidth / 2 + 36 * (i - 2), 5, 0, 1, 1, 17, 0)
+  -- game over screen
+  if gameOver then
+    -- backdrop with stencil for looney tunes effect
+    love.graphics.setColor(0,0,0,0.7)
+    love.graphics.stencil(gameOverStencil, "replace", 1)
+    love.graphics.setStencilTest("less", 1)
+    love.graphics.rectangle("fill", -10, -10, wWidth + 10, wHeight + 10)
+    love.graphics.setStencilTest()
+    
+    -- YOU LOSE
+    love.graphics.setColor(1, 0.3, 0.2, 1 - looneyPause)
+    love.graphics.printf("YOU LOSE", titleFont, 0, 50, wWidth, "center")
+    
+    -- score
+    if looneyPause < 0 then 
+      love.graphics.setColor(1,1,1,1)
+      love.graphics.printf("SCORE: " .. commaValue(score), menuFont, 0, 180, wWidth, "center")
+    end
+    
+    -- menus
+    for i,menu in ipairs(gameOverMenus) do
+      if menu.show then
+        menu:draw(menu:getPos(i, #gameOverMenus))
+      end
+    end
+    
   end
   
 end
 
 function love.keypressed(key, scancode)
   
-  -- TODO: ONLY IF GAME NOT PAUSED
   ucode = scancode:byte()
   -- alpha key pressed
   
-  if key == "escape" then
+  if key == "escape" and not gameOver then
     menuResume()
   end
   
-  if ((ucode > 64 and ucode < 91) or (ucode > 96 and ucode < 123)) and not gamePaused then
+  if ((ucode > 64 and ucode < 91) or (ucode > 96 and ucode < 123)) and not gamePaused and not gameOver then
     if ACTIVE_WORD then -- continue current word
       attackActiveWord(key)
       
@@ -277,7 +340,14 @@ end
 
 function love.mousepressed(mausx, mausy, button, istouch, presses)
   if button == 1 and gamePaused then -- left click
-    for i,menu in ipairs(menus) do -- look for hot menu
+    for i,menu in ipairs(pauseMenus) do -- look for hot menu
+      if menu.hot then
+        menu:fn() -- execute menu and return
+        return
+      end
+    end
+  elseif button == 1 and gameOver then
+    for i,menu in ipairs(gameOverMenus) do -- look for hot menu
       if menu.hot then
         menu:fn() -- execute menu and return
         return
@@ -360,15 +430,15 @@ function menuRestart()
   livingMice = {}
   dyingMice = {}
   
-  -- save score first!!
+  -- TODO: save score first!!
   score = 0
   level = 0
   levelDuration = 0
-  stopSpawning()
---  lives = 3
+  lives = 3
   
   setGameMessage("Killer mice are attacking!\nFend them off!")
   gamePaused = false
+  gameOver = false
   
   
 end
@@ -384,6 +454,10 @@ function menuDifficulty(menu)
     difficulty = 1
     menu.text = "Difficulty: Easy"
   end
+end
+
+function menuMainMenu()
+  print("Returning to main menu")
 end
 
 function drawGameMessage()
@@ -478,3 +552,17 @@ end
     
   
 --end
+
+function showGameOverMenus()
+  
+  tick.delay(function()  gameOverMenus[1].show = true  end, 7)
+      :after(function() gameOverMenus[2].show = true end, 0.75)
+      :after(function() gameOverMenus[3].show = true end, 0.75)
+  
+end
+
+function gameOverStencil()
+  if stencilRadius > 0 then
+    love.graphics.circle("fill", wWidth / 2, wHeight / 2, stencilRadius)
+  end
+end
