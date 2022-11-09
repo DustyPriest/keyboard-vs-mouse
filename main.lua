@@ -99,7 +99,7 @@ function love.load()
       "Restart",
       menuRestart))
   table.insert(menus, Menu(
-      "Difficulty: Easy",
+      "Difficulty: Normal",
       menuDifficulty))
   table.insert(menus, Menu(
       "Exit",
@@ -376,13 +376,13 @@ end
 function menuDifficulty(menu)
   if difficulty == 1 then
     difficulty = 2
-    menu.text = "Difficulty: Easy"
+    menu.text = "Difficulty: Normal"
   elseif difficulty == 2 then
     difficulty = 3
-    menu.text = "Difficulty: Normal"
+    menu.text = "Difficulty: Hard"
   else 
     difficulty = 1
-    menu.text = "Difficulty: Hard"
+    menu.text = "Difficulty: Easy"
   end
 end
 
@@ -417,18 +417,18 @@ function spawnMice(dt)
       setGameMessage("Level: " .. level, {0.2, 0.6, 0.6})
     end
     
-    levelDuration = 10 + level / 2
+    levelDuration = 20 + level / 2
     spawning = true
     if level % 5 == 0 then -- spawn 1 boss mouse per 5 levels every 5 levels
       for i=1, level / 5 do
-        table.insert(livingMice, Mouse(true))
+        table.insert(livingMice, Mouse(difficulty, level, true ))
       end
     end
   end
 
   if levelDuration > 0 and spawning then -- mid-level
     if spawnTimer <= 0 then -- ready to spawn mouse
-      table.insert(livingMice, Mouse(false))
+      table.insert(livingMice, Mouse(difficulty, level, false ))
       spawnTimer = difficultyMod(level)
     else -- not ready to spawn mouse
       spawnTimer = spawnTimer - dt

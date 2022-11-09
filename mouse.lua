@@ -13,7 +13,7 @@ local mouseColours = {
   }
 
 
-function Mouse:new(boss)
+function Mouse:new(difficulty, level, boss)
     -- random position on edge of screen
     if love.math.random() > 0.5 then
       -- xpos first, so ypos will be off screen
@@ -35,7 +35,7 @@ function Mouse:new(boss)
       end
     end
     
-    self.word = Word(boss)
+    self.word = Word(difficulty, level, boss)
     
     self.speed = 75 - #self.word.letters * 4
 
@@ -75,8 +75,8 @@ function Mouse:update(dt)
     self.y = self.y - 600 * vec.y / vec.dist * dt
   else
     -- dead: run away quickly
-    self.x = self.x + self.speed * 20 * -vec.x / vec.dist * dt
-    self.y = self.y + self.speed * 20 * -vec.y / vec.dist * dt
+    self.x = self.x + 600 * -vec.x / vec.dist * dt
+    self.y = self.y + 600 * -vec.y / vec.dist * dt
   end
 end
 

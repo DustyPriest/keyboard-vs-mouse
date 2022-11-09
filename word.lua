@@ -3,30 +3,40 @@ Word = Object.extend(Object)
 TYPED = {75/255, 255/255, 6/255, 1}
 UNTYPED = {1,1,1,1}
 
-local normalWordList = {}
+local shortWordList = {}
+local longWordList = {}
 local bossWordList = {}
 
-for line in love.filesystem.lines("normal-word-list.txt") do
-  table.insert(normalWordList, line)
+for line in love.filesystem.lines("short-word-list.txt") do
+  table.insert(shortWordList, line)
+end
+
+for line in love.filesystem.lines("long-word-list.txt") do
+  table.insert(longWordList, line)
 end
 
 for line in love.filesystem.lines("boss-word-list.txt") do
   table.insert(bossWordList, line)
 end
 
-function Word:new(boss)
-  self.letters = selectWord(boss)
+function Word:new(difficulty, level, boss)
+  self.letters = selectWord(difficulty, level, boss)
   
   self.isDead = false
   
 end
 
-function selectWord(boss)
-  local newWord = {}
-  if boss then
+-- Spawn normal always, large if on hard or on level 5+, boss 1 per level/5 on each 5th level, or every level from 10 if on hard.
+function selectWord(difficulty, level, boss)
+  local newWord = nil
+  if boss then -- call to spawn boss mouse
     newWord = bossWordList[love.math.random(1,#bossWordList)]
-  else
-    newWord = normalWordList[love.math.random(1,#normalWordList)]
+  elseif level > 5 or difficulty == 3 then -- 50/50 short or long word 
+    local rand = love.math.random(1,2)
+    if rand == 1 then newWord = shortWordList[love.math.random(1,#shortWordList)]
+    else newWord = longWordList[love.math.random(1,#longWordList)]end
+  else -- default always spawn normal word
+    newWord = shortWordList[love.math.random(1,#shortWordList)]
   end
     
   local ltrs = {}
