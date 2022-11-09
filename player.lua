@@ -27,7 +27,8 @@ function loadPlayerAnim()
   
 end
 
-function drawPlayer(lives)
+function drawPlayer(lives, invuln)
+  if invuln > 0 then love.graphics.setColor(1,0.6,0.6,0.8) end
   -- draw player based on  lives left
   if lives > 1 then
     love.graphics.draw(playerAnim, playerAnimFrames[4 - lives], wWidth / 2, wHeight / 2,0,1,1,(frameWidth + 2) / 2, (frameHeight + 2) / 2)

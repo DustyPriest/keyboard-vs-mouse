@@ -27,15 +27,14 @@ ACTIVE_WORD = false
 -- create menu class (properties: hovered (bool), function, colour, text, fontsize, ) DONE
     -- hovered property is a second check behind a gamePaused bool for whether clicking on menu should do anything DONE
 -- create pause on esc. and minimize/unfocus DONE
--- keyboard support for menu, eh
 -- make lose state with restart option DONE
 -- create scoring system and display
 -- record high scores
 -- check where "requires" should be put
 -- check how to best declare and initiate local variables
--- create a life system! 3 lives, mice get bounced back when they hit you, a sound effect plays
+-- create a life system! 3 lives, mice get bounced back when they hit you DONE
 -- create screenshake on hit taken
--- create main menu, move difficulty option there
+-- create main menu, move difficulty option there DONE
 -- separate into 3 word lists. normal: 2 - 6, large: 7 - 15, boss: 15+. Spawn normal always, large if on hard or on level 5+, boss 1 per level/5 on each 5th level, or every level from 10 if on hard. DONE
 
 local mainMenuBackground = nil
@@ -195,7 +194,7 @@ function love.update(dt)
       for i,v in ipairs(livingMice) do
         if v:checkCollision(dt) and invuln <= 0 then -- not invulnerable and getting hit
           lives = lives - 1
-          invuln = 3
+          invuln = 2
         end
         v:update(dt)
       end
@@ -260,16 +259,16 @@ function love.draw()
     
     -- draw player
     love.graphics.setColor(1,1,1,1)
-    drawPlayer(lives)
+    drawPlayer(lives, invuln)
     
     
     -- draw mice
     -- Change to for loop starting from end of table, so that the oldest mice render on top?
     for i,v in ipairs(livingMice) do
-      v:draw()
+      pcall(v.draw, v)
     end
     for i,v in ipairs(dyingMice) do
-      v:draw()
+      pcall(v.draw, v)
     end
     
     -- draw target over active mouse
@@ -287,7 +286,7 @@ function love.draw()
     
     -- pause menus
     if gamePaused and not gameOver then
-      love.graphics.setColor(0,0,0,0.5) -- transparent backdrop
+      love.graphics.setColor(0,0,0,0.7) -- transparent backdrop
       love.graphics.rectangle("fill", 0, 0, wWidth, wHeight)
       
       for i,v in ipairs(pauseMenus) do
@@ -339,7 +338,7 @@ function love.draw()
     -- game over screen
     if gameOver then
       -- backdrop with stencil for looney tunes effect
-      love.graphics.setColor(0,0,0,0.7)
+      love.graphics.setColor(0,0,0,0.85)
       love.graphics.stencil(gameOverStencil, "replace", 1)
       love.graphics.setStencilTest("less", 1)
       love.graphics.rectangle("fill", -10, -10, wWidth + 10, wHeight + 10)
@@ -455,17 +454,23 @@ end
 function attackActiveWord(key)
   -- iterate through letters in active word
   local wordCompleted = false
+  local wordLen = nil
   for i,v in ipairs(livingMice[ACTIVE_WORD].word.letters) do
     if v.typed == UNTYPED and v.ch == key then-- untyped and matching letter; set to typed and check for finished word
       v.typed = TYPED
       wordCompleted = livingMice[ACTIVE_WORD].word:assessState()
+      wordLen = #livingMice[ACTIVE_WORD].word.letters
       break
     elseif v.typed == UNTYPED and v.ch ~= key then break -- incorrect letter, stop checking
     end
   end
   
   if wordCompleted then
-    score = score + 200
+    local diffMod = nil
+    if difficulty == 1 then diffMod = 1
+    elseif difficulty == 2 then diffMod = 1.2
+    elseif difficulty == 3 then diffMod = 1.4 end
+    score = score + math.floor(math.log(level) + 1 * wordLen * 5 * diffMod)
     deleteActiveWord()
   end
 end
@@ -539,7 +544,6 @@ function menuDifficulty(menu)
 end
 
 function menuMainMenu()
-  print("Returning to main menu")
   gameMainMenu = true
   gamePaused = false
   gameOver = false
@@ -547,7 +551,7 @@ end
 
 function drawGameMessage()
   love.graphics.setColor(gameMsgClr[1], gameMsgClr[2], gameMsgClr[3], gameMsgOpacity)
-  love.graphics.printf(gameMsg, messageFont, wWidth / 4, 0 + 50, wWidth / 2, "center")
+  love.graphics.printf(gameMsg, messageFont, wWidth / 4, 0 + 75, wWidth / 2, "center")
 end
 
 function setGameMessage(msg, rgb)
@@ -573,7 +577,7 @@ function spawnMice(dt)
     
     -- level title every 5 levels
     if level % 5 == 0 and gameMsgOpacity <= 0 then
-      setGameMessage("Level: " .. level, {0.2, 0.6, 0.6})
+      setGameMessage("Level: " .. level, {1,1,0})
     end
     
     levelDuration = 20 + level / 2
@@ -600,9 +604,9 @@ end
 
 function difficultyMod(level)
 --  local mod = nil
-  if     difficulty == 1 then return (50 / (level + 10)) + 2 -- mod =  11 - (0.15 * level) -- easy
+  if     difficulty == 1 then return (50 / (level + 10)) + 3 --2 -- mod =  11 - (0.15 * level) -- easy
   elseif difficulty == 2 then return (50 / (level + 10)) + 1 -- mod =  7  - (0.15 * level) -- normal
-  else                        return (50 / (level + 15)) + 0.5  --mod = 4  - (0.15 * level) -- hard
+  else                        return (50 / (level + 15)) -- + 0.5  --mod = 4  - (0.15 * level) -- hard
   end
 --  return (1 / (level + 2)) * mod
 end
