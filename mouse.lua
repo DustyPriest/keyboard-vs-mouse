@@ -117,7 +117,7 @@ end
 
 function loadMouseAnim()
   -- mouse animation: 4 32x32 frames each with 1px transparent border
-  mouseAnim = love.graphics.newImage("mouse-anim.png")
+  mouseAnim = love.graphics.newImage("resources/images/mouse-anim.png")
 
   mouseFrames = {}
 

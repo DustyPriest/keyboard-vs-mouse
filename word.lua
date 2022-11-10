@@ -7,15 +7,15 @@ local shortWordList = {}
 local longWordList = {}
 local bossWordList = {}
 
-for line in love.filesystem.lines("short-word-list.txt") do -- short words: 2-6
+for line in love.filesystem.lines("resources/wordlists/short-word-list.txt") do -- short words: 2-6
   table.insert(shortWordList, line)
 end
 
-for line in love.filesystem.lines("long-word-list.txt") do -- long words: 7-12
+for line in love.filesystem.lines("resources/wordlists/long-word-list.txt") do -- long words: 7-12
   table.insert(longWordList, line)
 end
 
-for line in love.filesystem.lines("boss-word-list.txt") do -- boss words: 15+
+for line in love.filesystem.lines("resources/wordlists/boss-word-list.txt") do -- boss words: 15+
   table.insert(bossWordList, line)
 end
 

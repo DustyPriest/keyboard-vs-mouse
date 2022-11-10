@@ -13,7 +13,7 @@ function loadPlayerAnim()
   wHeight = love.graphics.getHeight()
 
   -- player frames are 72x64 with 1px border
-  playerAnim = love.graphics.newImage("player-combined.png")
+  playerAnim = love.graphics.newImage("resources/images/player-combined.png")
   
   frameWidth = 72
   frameHeight = 64

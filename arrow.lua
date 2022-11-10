@@ -28,7 +28,7 @@ end
 
 function loadArrowAnim()
   -- arrow animation: 6 14x11 frames 
-  arrowAnim = love.graphics.newImage("target-arrows.png")
+  arrowAnim = love.graphics.newImage("resources/images/target-arrows.png")
   
   arrowAnimFrames = {}
   

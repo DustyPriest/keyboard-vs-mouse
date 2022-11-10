@@ -23,12 +23,12 @@ ACTIVE_WORD = false
 -- create a few gamemessages at key points
 -- change background colour and general colour, background texture? DONE
 -- create death animation for mice (run back out of screen quickly, without letters beneath, or circle around) DONE
--- create sound effect for hitting, missing, destroying, dying
+-- create sound effect for hitting, missing, destroying, dying DONE
 -- create menu class (properties: hovered (bool), function, colour, text, fontsize, ) DONE
     -- hovered property is a second check behind a gamePaused bool for whether clicking on menu should do anything DONE
 -- create pause on esc. and minimize/unfocus DONE
 -- make lose state with restart option DONE
--- create scoring system and display
+-- create scoring system and display DONE
 -- record high scores
 -- check where "requires" should be put
 -- check how to best declare and initiate local variables
@@ -94,14 +94,11 @@ local looneyPause = 1
 -- CALLBACKS
 
 function love.load()
-  mouseFont = love.graphics.setNewFont("RobotoMono-Medium.ttf", 18)
-  menuFont = love.graphics.setNewFont("RobotoMono-Medium.ttf", 24)
-  titleFont = love.graphics.setNewFont("RobotoMono-Medium.ttf", 64)
-  messageFont = love.graphics.setNewFont("RobotoMono-Medium.ttf", 32)
-  -- TODO: Implement mini bosses
-  bossFont = love.graphics.setNewFont("RobotoMono-Medium.ttf", 22)
+  mouseFont = love.graphics.setNewFont("resources/fonts/RobotoMono-Medium.ttf", 18)
+  menuFont = love.graphics.setNewFont("resources/fonts/RobotoMono-Medium.ttf", 24)
+  titleFont = love.graphics.setNewFont("resources/fonts/RobotoMono-Medium.ttf", 64)
+  messageFont = love.graphics.setNewFont("resources/fonts/RobotoMono-Medium.ttf", 32)
   -- math.randomseed( os.time() ) not necessary when using love.math.random
-  
   
   wWidth = love.graphics.getWidth()
   wHeight = love.graphics.getHeight()
@@ -112,22 +109,22 @@ function love.load()
   loadPlayerAnim()
   loadArrowAnim()
   
-  mainMenuBackground = love.graphics.newImage("cat-computer-main-menu.png")
-  background = love.graphics.newImage("floorboards.png")
-  heart = love.graphics.newImage("heart.png")
+  mainMenuBackground = love.graphics.newImage("resources/images/cat-computer-main-menu.png")
+  background = love.graphics.newImage("resources/images/floorboards.png")
+  heart = love.graphics.newImage("resources/images/heart.png")
   
-  menuSFX = love.audio.newSource("menu-sfx.wav", "static")
-  menuBackSFX = love.audio.newSource("menu-back-sfx.wav", "static")
-  levelSFX = love.audio.newSource("level-sfx.wav", "static")
+  menuSFX = love.audio.newSource("resources/audio/menu-sfx.wav", "static")
+  menuBackSFX = love.audio.newSource("resources/audio/menu-back-sfx.wav", "static")
+  levelSFX = love.audio.newSource("resources/audio/level-sfx.wav", "static")
   for i=1,4 do
-    keystrokeHitSFX[i] = love.audio.newSource("keystroke-hit-sfx.wav", "static")
+    keystrokeHitSFX[i] = love.audio.newSource("resources/audio/keystroke-hit-sfx.wav", "static")
   end
-  keystrokeMissSFX = love.audio.newSource("keystroke-miss-sfx.wav", "static")
-  keystrokeKillSFX = love.audio.newSource("keystroke-kill-sfx.wav", "static")
-  damageSFX = love.audio.newSource("damage-sfx.wav", "static")
+  keystrokeMissSFX = love.audio.newSource("resources/audio/keystroke-miss-sfx.wav", "static")
+  keystrokeKillSFX = love.audio.newSource("resources/audio/keystroke-kill-sfx.wav", "static")
+  damageSFX = love.audio.newSource("resources/audio/damage-sfx.wav", "static")
   
   
-  music = love.audio.newSource("game-music.wav", "stream")
+  music = love.audio.newSource("resources/audio/game-music.wav", "stream")
   music:setLooping(true)
   music:setVolume(0.3)
   music:setPitch(0.75)
@@ -145,8 +142,8 @@ function love.load()
   }
   
   musicButton = {
-    imgOn = love.graphics.newImage("music-on.png"),
-    imgOff = love.graphics.newImage("music-off.png"),
+    imgOn = love.graphics.newImage("resources/images/music-on.png"),
+    imgOff = love.graphics.newImage("resources/images/music-off.png"),
     hot = false,
     fn = toggleMusic,
     x = 0,
@@ -156,8 +153,8 @@ function love.load()
   }
   
     soundButton = {
-    imgOn = love.graphics.newImage("speaker-on.png"),
-    imgOff = love.graphics.newImage("speaker-off.png"),
+    imgOn = love.graphics.newImage("resources/images/speaker-on.png"),
+    imgOff = love.graphics.newImage("resources/images/speaker-off.png"),
     hot = false,
     fn = toggleSfx,
     x = 52,
