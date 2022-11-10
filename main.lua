@@ -41,6 +41,18 @@ local mainMenuBackground = nil
 local background = nil
 local heart = nil
 
+local menuSFX = nil
+local menuBackSFX = nil
+local levelSFX = nil
+local keystrokeHitSFX = {}
+local keystrokeMissSFX = nil
+local keystrokeKillSFX = nil
+local damageSFX = nil
+
+local music = nil
+local musicMuted = false
+local sfxMuted = false
+
 local livingMice = {}
 local dyingMice = {}
 
@@ -52,6 +64,8 @@ local gameMsgOpacity = 0
 local gameMsgClr = {1,1,1,1}
 
 local escButton = nil
+local soundButton = nil
+local musicButton = nil
 
 local difficulty = 2
 local level = 0
@@ -97,9 +111,28 @@ function love.load()
   loadMouseAnim()
   loadPlayerAnim()
   loadArrowAnim()
+  
   mainMenuBackground = love.graphics.newImage("cat-computer-main-menu.png")
   background = love.graphics.newImage("floorboards.png")
   heart = love.graphics.newImage("heart.png")
+  
+  menuSFX = love.audio.newSource("menu-sfx.wav", "static")
+  menuBackSFX = love.audio.newSource("menu-back-sfx.wav", "static")
+  levelSFX = love.audio.newSource("level-sfx.wav", "static")
+  for i=1,4 do
+    keystrokeHitSFX[i] = love.audio.newSource("keystroke-hit-sfx.wav", "static")
+  end
+  keystrokeMissSFX = love.audio.newSource("keystroke-miss-sfx.wav", "static")
+  keystrokeKillSFX = love.audio.newSource("keystroke-kill-sfx.wav", "static")
+  damageSFX = love.audio.newSource("damage-sfx.wav", "static")
+  
+  
+  music = love.audio.newSource("game-music.wav", "stream")
+  music:setLooping(true)
+  music:setVolume(0.3)
+  music:setPitch(0.75)
+  music:play()
+
 
   escButton = {
     text = "ESC",
@@ -109,7 +142,30 @@ function love.load()
     y = 0,
     width = 45,
     height = 30
-    }
+  }
+  
+  musicButton = {
+    imgOn = love.graphics.newImage("music-on.png"),
+    imgOff = love.graphics.newImage("music-off.png"),
+    hot = false,
+    fn = toggleMusic,
+    x = 0,
+    y = wHeight - 48,
+    width = 48,
+    height = 48
+  }
+  
+    soundButton = {
+    imgOn = love.graphics.newImage("speaker-on.png"),
+    imgOff = love.graphics.newImage("speaker-off.png"),
+    hot = false,
+    fn = toggleSfx,
+    x = 52,
+    y = wHeight - 48,
+    width = 48,
+    height = 48
+  }
+  
   
   -- Load menus
   table.insert(pauseMenus, Menu(
@@ -158,12 +214,15 @@ end
 
 function love.update(dt)
   tick.update(dt)
+  -- assess mouse position
+  local mausx, mausy = love.mouse.getPosition()
   
   if not gameMainMenu then
     -- lose state check before updating mouse position etc.
     if lives == 0 and not gameOver then
       gameOver = true
       delayShowMenus(gameOverMenus, 7)
+      music:setPitch(0.5)
     end
     
     if gameOver and stencilRadius > 0 then -- looney tunes effect
@@ -177,6 +236,7 @@ function love.update(dt)
     -- tabbing out
     if not love.window.hasFocus() and not gameOver then 
       gamePaused = true
+      music:setVolume(0.1)
     end
     
     -- update mice
@@ -188,13 +248,12 @@ function love.update(dt)
         invuln = invuln - dt
       end
       
-      
-
       -- update mice
       for i,v in ipairs(livingMice) do
         if v:checkCollision(dt) and invuln <= 0 then -- not invulnerable and getting hit
           lives = lives - 1
           invuln = 2
+          if not sfxMuted then damageSFX:play() end
         end
         v:update(dt)
       end
@@ -211,13 +270,11 @@ function love.update(dt)
     end
     
     -- update menus
-    -- if game paused then render menu, assess mouse position
-    local mausx, mausy = love.mouse.getPosition()
     if gamePaused and not gameOver then
       for i,v in ipairs(pauseMenus) do
         v.hot = v:isHot(mausx, mausy, v:getPos(i, #pauseMenus))
       end
-      escButton.hot = escButtonIsHot(mausx, mausy)
+      escButton.hot = buttonIsHot(mausx, mausy, escButton)
     elseif gameOver then
       for i,menu in ipairs(gameOverMenus) do
         if menu.show then
@@ -225,7 +282,7 @@ function love.update(dt)
         end
       end
     else 
-      escButton.hot = escButtonIsHot(mausx, mausy)
+      escButton.hot = buttonIsHot(mausx, mausy, escButton)
     end
     
     -- update game message
@@ -234,16 +291,19 @@ function love.update(dt)
     end
   else -- game main menu open
       
-      -- assess mouse position
-      local mausx, mausy = love.mouse.getPosition()
+      
       for i,menu in ipairs(mainMenus) do
         if menu.show then
           menu.hot = menu:isHot(mausx, mausy, menu:getPos(i, #mainMenus))
         end
       end
-  
   end
-  
+
+  -- sound mute buttons
+  if gamePaused or gameMainMenu then
+    soundButton.hot = buttonIsHot(mausx, mausy, soundButton)
+    musicButton.hot = buttonIsHot(mausx, mausy, musicButton)
+  end
   
 end
 
@@ -294,6 +354,8 @@ function love.draw()
       end
     end
     
+    
+    
     -- score in corner
     if not gameOver then
       love.graphics.setColor(0,0,0,0.5)
@@ -321,16 +383,15 @@ function love.draw()
       
       -- esc button
       if escButton.hot then
-        love.graphics.setColor(1,1,1,0.5)
+        love.graphics.setColor(1,1,1,0.35)
         love.graphics.rectangle("fill", 0, 0, escButton.width, escButton.height)
         love.graphics.setColor(0,0,0,1)
-        love.graphics.printf(escButton.text, mouseFont, 0, 2, escButton.width, "center")
       else 
         love.graphics.setColor(0,0,0,0.5)
         love.graphics.rectangle("fill", 0, 0, escButton.width, escButton.height)
         love.graphics.setColor(1,1,1,1)
-        love.graphics.printf(escButton.text, mouseFont, 0, 2, escButton.width, "center")
       end
+      love.graphics.printf(escButton.text, mouseFont, 0, 2, escButton.width, "center")
       
       
     end
@@ -381,6 +442,31 @@ function love.draw()
     
   end
   
+  -- sound mute buttons
+  if gamePaused or gameMainMenu then
+    if soundButton.hot then
+      love.graphics.setColor(0.8,0.8,1,0.5)
+      love.graphics.rectangle("fill", soundButton.x, soundButton.y, soundButton.width, soundButton.height)
+    else 
+      love.graphics.setColor(1,1,1,0.35)
+      love.graphics.rectangle("fill", soundButton.x, soundButton.y, soundButton.width, soundButton.height)
+    end
+    love.graphics.setColor(1,1,1,1)
+    if sfxMuted then love.graphics.draw(soundButton.imgOff, soundButton.x, soundButton.y)
+    else love.graphics.draw(soundButton.imgOn, soundButton.x, soundButton.y) end
+
+    if musicButton.hot then
+      love.graphics.setColor(0.8,0.8,1,0.5)
+      love.graphics.rectangle("fill", musicButton.x, musicButton.y, musicButton.width, musicButton.height)
+    else 
+      love.graphics.setColor(1,1,1,0.35)
+      love.graphics.rectangle("fill", musicButton.x, musicButton.y, musicButton.width, musicButton.height)
+    end
+    love.graphics.setColor(1,1,1,1)
+    if musicMuted then love.graphics.draw(musicButton.imgOff, musicButton.x, musicButton.y)
+    else love.graphics.draw(musicButton.imgOn, musicButton.x, musicButton.y) end
+  end
+  
 end
 
 function love.keypressed(key, scancode)
@@ -388,7 +474,7 @@ function love.keypressed(key, scancode)
   ucode = scancode:byte()
   -- alpha key pressed
   
-  if key == "escape" and not gameOver then
+  if key == "escape" and not gameOver and not gameMainMenu then
     menuResume()
   end
   
@@ -410,10 +496,7 @@ function love.mousepressed(mausx, mausy, button, istouch, presses)
         return
       end
     end
-    if escButton.hot then 
-      escButton.fn() 
-      return
-    end
+    
   elseif button == 1 and gameOver then
     for i,menu in ipairs(gameOverMenus) do -- look for hot menu
       if menu.hot then
@@ -428,11 +511,16 @@ function love.mousepressed(mausx, mausy, button, istouch, presses)
         return
       end
     end
-  else
-    if escButton.hot then 
-      escButton.fn() 
-      return
-    end
+  end
+  if escButton.hot then 
+    escButton.fn() 
+    return
+  elseif musicButton.hot then
+    musicButton.fn()
+    return
+  elseif soundButton.hot then
+    soundButton.fn()
+    return
   end
 end
 
@@ -455,13 +543,18 @@ function attackActiveWord(key)
   -- iterate through letters in active word
   local wordCompleted = false
   local wordLen = nil
+  
   for i,v in ipairs(livingMice[ACTIVE_WORD].word.letters) do
     if v.typed == UNTYPED and v.ch == key then-- untyped and matching letter; set to typed and check for finished word
       v.typed = TYPED
       wordCompleted = livingMice[ACTIVE_WORD].word:assessState()
       wordLen = #livingMice[ACTIVE_WORD].word.letters
+      if wordCompleted and not sfxMuted then keystrokeKillSFX:play()
+      else playHitEffectFromQueue() end
       break
-    elseif v.typed == UNTYPED and v.ch ~= key then break -- incorrect letter, stop checking
+    elseif v.typed == UNTYPED and v.ch ~= key then 
+      if not sfxMuted then keystrokeMissSFX:play() end
+      break -- incorrect letter, stop checking
     end
   end
   
@@ -472,7 +565,9 @@ function attackActiveWord(key)
     elseif difficulty == 3 then diffMod = 1.4 end
     score = score + math.floor(math.log(level) + 1 * wordLen * 5 * diffMod)
     deleteActiveWord()
+    if not sfxMuted then keystrokeKillSFX:play() end
   end
+    
 end
 
 function deleteActiveWord()
@@ -490,11 +585,12 @@ end
 function menuResume()
     if gamePaused then 
       gamePaused = false
-      
+      music:setVolume(0.3)
     else 
       gamePaused = true 
-    
+      music:setVolume(0.1)
     end
+    if not sfxMuted then menuSFX:play() end
 end
 
 function menuExit(menu)
@@ -509,6 +605,8 @@ function menuExit(menu)
         menu.text = "Exit"
         end, 2)
   end
+  if not sfxMuted then menuBackSFX:play() end
+  
 end
 
 function menuRestart()
@@ -521,12 +619,19 @@ function menuRestart()
   level = 0
   levelDuration = 0
   lives = 3
+  invuln = 0
+  stencilRadius = wWidth / 1.5
+  looneyPause = 1
+  
+  hideMenus(gameOverMenus)
   
   setGameMessage("Killer mice are attacking!\nFend them off!")
   gamePaused = false
   gameOver = false
   gameMainMenu = false
   
+  if not sfxMuted then menuBackSFX:play() end 
+  music:setPitch(1)
   
 end
 
@@ -541,12 +646,33 @@ function menuDifficulty(menu)
     difficulty = 1
     menu.text = "Difficulty: Easy"
   end
+  if not sfxMuted then menuSFX:play() end
 end
 
 function menuMainMenu()
+  hideMenus(mainMenus)
+  delayShowMenus(mainMenus, 0.3)
   gameMainMenu = true
   gamePaused = false
   gameOver = false
+  if not sfxMuted then menuBackSFX:play() end
+  music:setPitch(0.75)
+  music:setVolume(0.3)
+end
+
+function toggleMusic()
+  if musicMuted then
+    music:play()
+    musicMuted = false
+  else 
+    music:pause()
+    musicMuted = true
+  end
+end
+
+function toggleSfx()
+  if sfxMuted then sfxMuted = false
+  else sfxMuted = true end
 end
 
 function drawGameMessage()
@@ -578,6 +704,7 @@ function spawnMice(dt)
     -- level title every 5 levels
     if level % 5 == 0 and gameMsgOpacity <= 0 then
       setGameMessage("Level: " .. level, {1,1,0})
+      if not sfxMuted then levelSFX:play() end
     end
     
     levelDuration = 20 + level / 2
@@ -644,9 +771,15 @@ end
 
 function delayShowMenus(menuList, initDelay)
   tick.delay(function()  menuList[1].show = true  end, initDelay)
-      :after(function() menuList[2].show = true end, 0.75)
-      :after(function() menuList[3].show = true end, 0.75)
+      :after(function() menuList[2].show = true end, 0.6)
+      :after(function() menuList[3].show = true end, 0.6)
   
+end
+
+function hideMenus(menuList)
+  for i,menu in ipairs(menuList) do
+    menu.show = false
+  end
 end
 
 function gameOverStencil()
@@ -655,10 +788,20 @@ function gameOverStencil()
   end
 end
 
-function escButtonIsHot(mausx, mausy)
-  return mausx > 0
-      and mausx < escButton.width
-      and mausy > 0
-      and mausy < escButton.height
+function buttonIsHot(mausx, mausy, button)
+  return mausx > button.x
+      and mausx < button.x + button.width
+      and mausy > button.y
+      and mausy < button.y + button.height
   
+end
+
+function playHitEffectFromQueue()
+  if sfxMuted then return end
+  for i,sfx in ipairs(keystrokeHitSFX) do
+    if not sfx:isPlaying() then
+      sfx:play()
+      break
+    end
+  end
 end
