@@ -4,14 +4,11 @@ require "word"
 local mouseAnim = nil
 local mouseFrames = nil
 
-
-
 local mouseColours = {
   {80/255, 52/255, 34/255}, -- Brown
   {80/255, 80/255, 80/255}, -- Black/Grey
   {1,1,1} -- White / default
   }
-
 
 function Mouse:new(difficulty, level, boss)
     -- random position on edge of screen
@@ -43,10 +40,7 @@ function Mouse:new(difficulty, level, boss)
     -- random of three colours
     self.colour = mouseColours[love.math.random(1, #mouseColours)]
       
-      
     self.cd = 0
-    
-
     
     self.angle = math.atan2(400 - self.y, 600 - self.x)   -- angle to face center
     self.currentFrame = 1
@@ -90,10 +84,7 @@ function Mouse:draw()
     love.graphics.draw(mouseAnim, mouseFrames[math.floor(self.currentFrame)],self.x, self.y, self.angle - math.pi, self.scale * 0.8, self.scale * 0.8, 16, 16)
   end
   love.graphics.setColor(1,1,1)
---  FOR TESTING: draw red circle in center of image
---  love.graphics.setColor(1,0,0)
---  love.graphics.circle("fill",self.x, self.y,5)
-  
+
   -- draw letters
   if not self.word.isDead then
     local letterWidth = 11
@@ -109,7 +100,6 @@ function Mouse:draw()
       love.graphics.setColor(unpack(v.typed))
       love.graphics.print(v.ch, mouseFont, letterx, self.y + 30) -- draw letter
       love.graphics.line(letterx + 2, self.y + 55, letterx + 9, self.y + 55) -- draw underline
-      -- love.graphics.setColor(1,1,1)
     end
   end
   
