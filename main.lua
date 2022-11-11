@@ -36,6 +36,11 @@ ACTIVE_WORD = false
 -- create screenshake on hit taken
 -- create main menu, move difficulty option there DONE
 -- separate into 3 word lists. normal: 2 - 6, large: 7 - 15, boss: 15+. Spawn normal always, large if on hard or on level 5+, boss 1 per level/5 on each 5th level, or every level from 10 if on hard. DONE
+ -- sound effects for music and sound buttons DONE
+-- make miss sound fire when no active word and wrong key DONE
+-- investigate lag for first mouse of a level NOT SURE
+-- check player hitbox FIXED
+-- make sound butytons look better DONE
 
 local mainMenuBackground = nil
 local background = nil
@@ -118,9 +123,11 @@ function love.load()
   levelSFX = love.audio.newSource("resources/audio/level-sfx.wav", "static")
   for i=1,4 do
     keystrokeHitSFX[i] = love.audio.newSource("resources/audio/keystroke-hit-sfx.wav", "static")
+    keystrokeHitSFX[i]:setVolume(0.6)
   end
   keystrokeMissSFX = love.audio.newSource("resources/audio/keystroke-miss-sfx.wav", "static")
   keystrokeKillSFX = love.audio.newSource("resources/audio/keystroke-kill-sfx.wav", "static")
+  keystrokeKillSFX:setVolume(0.6)
   damageSFX = love.audio.newSource("resources/audio/damage-sfx.wav", "static")
   
   
@@ -317,7 +324,9 @@ function love.draw()
     -- draw player
     love.graphics.setColor(1,1,1,1)
     drawPlayer(lives, invuln)
-    
+    love.graphics.setColor(1,0,0,1)
+    love.graphics.rectangle("line",wWidth/2 - 36, wHeight/2 - 32,72, 64)
+    love.graphics.setColor(1,1,1,1)
     
     -- draw mice
     -- Change to for loop starting from end of table, so that the oldest mice render on top?
@@ -443,22 +452,20 @@ function love.draw()
   if gamePaused or gameMainMenu then
     if soundButton.hot then
       love.graphics.setColor(0.8,0.8,1,0.5)
-      love.graphics.rectangle("fill", soundButton.x, soundButton.y, soundButton.width, soundButton.height)
     else 
       love.graphics.setColor(1,1,1,0.35)
-      love.graphics.rectangle("fill", soundButton.x, soundButton.y, soundButton.width, soundButton.height)
     end
+    love.graphics.rectangle("fill", soundButton.x, soundButton.y - 2, soundButton.width, soundButton.height + 2)
     love.graphics.setColor(1,1,1,1)
     if sfxMuted then love.graphics.draw(soundButton.imgOff, soundButton.x, soundButton.y)
     else love.graphics.draw(soundButton.imgOn, soundButton.x, soundButton.y) end
 
     if musicButton.hot then
       love.graphics.setColor(0.8,0.8,1,0.5)
-      love.graphics.rectangle("fill", musicButton.x, musicButton.y, musicButton.width, musicButton.height)
     else 
       love.graphics.setColor(1,1,1,0.35)
-      love.graphics.rectangle("fill", musicButton.x, musicButton.y, musicButton.width, musicButton.height)
     end
+    love.graphics.rectangle("fill", musicButton.x, musicButton.y - 2, musicButton.width, musicButton.height + 2)
     love.graphics.setColor(1,1,1,1)
     if musicMuted then love.graphics.draw(musicButton.imgOff, musicButton.x, musicButton.y)
     else love.graphics.draw(musicButton.imgOn, musicButton.x, musicButton.y) end
@@ -534,6 +541,8 @@ function checkWords(key)
       break
     end
   end
+  -- no word with key as starting letter, miss SFX
+  if not sfxMuted then keystrokeMissSFX:play() end
 end
 
 function attackActiveWord(key)
@@ -661,14 +670,18 @@ function toggleMusic()
   if musicMuted then
     music:play()
     musicMuted = false
+    if not sfxMuted then menuSFX:play() end
   else 
     music:pause()
     musicMuted = true
+    if not sfxMuted then menuSFX:play() end
   end
 end
 
 function toggleSfx()
-  if sfxMuted then sfxMuted = false
+  if sfxMuted then 
+    sfxMuted = false
+    menuSFX:play()
   else sfxMuted = true end
 end
 

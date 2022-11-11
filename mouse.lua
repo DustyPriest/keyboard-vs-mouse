@@ -140,11 +140,11 @@ function Mouse:checkCollision(dt)
   local pBottom = 800 / 2 + 64 / 2
   
   -- TODO: move to mouse object? to sort out sizing
-  
-  local mLeft = self.x
-  local mRight = self.x + 32 -- double radius to equal right side, doesn't work properly with circle
-  local mTop = self.y
-  local mBottom = self.y + 32
+  local scale = self.scale * 8
+  local mLeft = self.x - scale
+  local mRight = self.x + scale
+  local mTop = self.y - scale
+  local mBottom = self.y + scale
   
   -- store boolean of if overlapping or not and not already on cooldown, return later after updating mouse
   local result = mRight > pLeft 
