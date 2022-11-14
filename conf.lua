@@ -1,6 +1,6 @@
 function love.conf(t)
     t.window.title = "Keyboard vs. Mouse"
-    -- t.window.icon = "panda.png"
+     t.window.icon = "/resources/images/icon.png"
     
     t.window.width = 1200
     t.window.height = 800
