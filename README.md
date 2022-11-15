@@ -1,5 +1,5 @@
 # Keyboard vs. Mouse
-#### [Video Demo]()
+#### [Video Demo](https://youtu.be/-27BL8dMzuA)
 #### A 2D typing game created in Lua using [LÖVE](https://love2d.org/)
 
 This game was created in November 2022 as the final project for Harvard's CS50. 
@@ -14,7 +14,7 @@ There are three difficulties: Easy, Normal, and Hard.
 The main difference between them is how fast the enemy spawn rate scales with time, however more difficulty word lists are available in hard mode.
 
 ##### Framework & Libraries
-I opted to use the LÖVE framework for Lua and made use of two additional libraries: [*tick*]() and [*classic*]() both by *rxi*.
+I opted to use the LÖVE framework for Lua and made use of two additional libraries: [*tick*](https://github.com/rxi/tick) and [*classic*](https://github.com/rxi/classic) both by *rxi*.
 *Tick* includes basic functions for delaying function calls, however I implemented my own timer systems for more complicated effects.
 *Classic* implements simple object classes, which I used to group the functions and properties for the different game elements.
 
