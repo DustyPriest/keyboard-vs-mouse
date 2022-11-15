@@ -258,7 +258,7 @@ function love.keypressed(key, scancode)
     menuResume()
   end
   
-  if ((ucode > 64 and ucode < 91) or (ucode > 96 and ucode < 123)) and not gamePaused and not gameOver then
+  if ((ucode > 64 and ucode < 91) or (ucode > 96 and ucode < 123)) and not gamePaused and not gameOver and not gameMainMenu then
     if ACTIVE_WORD then -- continue current word
       attackActiveWord(key)
       
